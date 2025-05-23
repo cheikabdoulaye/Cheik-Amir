@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dictionnaire de Recherche avec API</title>
+  <style>
+    /* Reset de base */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: #f0f0f0;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Horloge en haut à droite */
+    #clock {
+      position: fixed;
+      top: 15px;
+      right: 20px;
+      background: rgba(39, 39, 61, 0.8);
+      color: #f7c948;
+      font-weight: 700;
+      padding: 8px 15px;
+      border-radius: 12px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 18px;
+      box-shadow: 0 0 10px #f7c948;
+      user-select: none;
+      z-index: 1000;
+    }
+
+    .container {
+      background: #2b2b48;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      width: 400px;
+      padding: 30px;
+      text-align: center;
+      z-index: 10;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #f7c948;
+      text-shadow: 0 0 10px #f7c948;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 15px;
+      border-radius: 50px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-shadow: inset 2px 2px 5px rgba(255,255,255,0.1),
+                  inset -2px -2px 5px rgba(0,0,0,0.3);
+    }
+
+    input[type="text"]:focus {
+      box-shadow: 0 0 15px #f7c948;
+      background-color: #3a3a60;
+      color: #fff;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 12px 30px;
+      background: #f7c948;
+      border: none;
+      border-radius: 50px;
+      font-weight: 700;
+      color: #2b2b48;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(247,201,72,0.5);
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      background: #f2b600;
+      transform: scale(1.05);
+    }
+
+    .result {
+      margin-top: 25px;
+      background: #3a3a60;
+      padding: 20px;
+      border-radius: 12px;
+      min-height: 100px;
+      box-shadow: inset 2px 2px 8px rgba(0,0,0,0.4);
+      font-size: 18px;
+      line-height: 1.4;
+      color: #e0e0e0;
+      text-align: left;
+      overflow-y: auto;
+      max-height: 150px;
+    }
+
+    .not-found {
+      color: #ff6b6b;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    /* Texte défilant en bas */
+    #marquee-container {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: #2b2b48;
+      overflow: hidden;
+      height: 40px;
+      box-shadow: 0 -3px 10px rgba(0,0,0,0.7);
+      z-index: 1000;
+    }
+
+    #marquee-text {
+      display: inline-block;
+      white-space: nowrap;
+      color: #f7c948;
+      font-weight: 700;
+      font-size: 24px;
+      padding-left: 100%;
+      animation: marquee 15s linear infinite;
+      text-shadow: 0 0 10px #f7c948;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 40px;
+    }
+
+    @keyframes marquee {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div id="clock">--:--:--</div>
+
+  <div class="container">
+    <h1>Dictionnaire de Recherche</h1>
+    <input type="text" id="searchInput" placeholder="Tape un mot ici..." />
+    <button id="searchBtn">Chercher</button>
+    <div id="result" class="result">Entrez un mot et clique sur Chercher.</div>
+  </div>
+
+  <div id="marquee-container">
+    <div id="marquee-text">Cheik Amir - Cheik Amir - Cheik Amir - Cheik Amir - Cheik Amir</div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const resultDiv = document.getElementById('result');
+
+    async function chercherMotAPI() {
+      const mot = searchInput.value.trim().toLowerCase();
+      if (mot === "") {
+        resultDiv.innerHTML = "Merci de taper un mot.";
+        resultDiv.classList.remove('not-found');
+        return;
+      }
+
+      resultDiv.innerHTML = "Recherche en cours...";
+      resultDiv.classList.remove('not-found');
+
+      try {
+        const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/fr/${mot}`);
+        if (!response.ok) throw new Error("Mot non trouvé");
+
+        const data = await response.json();
+
+        // data est un tableau, on prend la première entrée
+        const definitions = data[0].meanings[0].definitions;
+        let defsText = definitions.map((def, idx) => `${idx + 1}. ${def.definition}`).join('<br>');
+
+        resultDiv.innerHTML = `<strong>${mot.charAt(0).toUpperCase() + mot.slice(1)} :</strong><br>${defsText}`;
+      } catch (error) {
+        resultDiv.classList.add('not-found');
+        resultDiv.innerHTML = `Désolé, le mot "<em>${mot}</em>" n'a pas été trouvé dans la base.`;
+      }
+    }
+
+    searchBtn.addEventListener('click', chercherMotAPI);
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        chercherMotAPI();
+      }
+    });
+
+    // Horloge
+    function updateClock() {
+      const clock = document.getElementById('clock');
+      const now = new Date();
+      let h = now.getHours().toString().padStart(2, '0');
+      let m = now.getMinutes().toString().padStart(2, '0');
+      let s = now.getSeconds().toString().padStart(2, '0');
+      clock.textContent = `${h}:${m}:${s}`;
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+
+</body>
+  </html>
